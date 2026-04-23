@@ -1,0 +1,20 @@
+package com.todoteg.dto.admin;
+
+import java.time.LocalDate;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class OrderSummaryDTO {
+    private Long id;
+    private Double amount;
+    private LocalDate date;
+    private String status;
+    private Integer itemCount;
+    
+    private CustomerBasicDTO customer;
+}
