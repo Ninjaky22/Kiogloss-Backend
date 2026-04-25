@@ -71,7 +71,7 @@ public class UserService {
         user.setPhoneNumber(request.getPhoneNumber());
         user.setIsActive(true);
         user.setIsStaff(false);
-        user.setIsSuperuser(false);
+        user.setIsSuperuser(request.getIsSuperuser());
         
         // Manejar imagen de perfil Base64
         if (request.getProfileImage() != null && !request.getProfileImage().isEmpty()) {

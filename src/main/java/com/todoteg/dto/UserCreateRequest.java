@@ -27,4 +27,6 @@ public class UserCreateRequest {
     private AccountDTO account;
     
     private AddressDTO address;
+
+    private Boolean isSuperuser = false;
 }
