@@ -14,15 +14,16 @@ import java.util.function.Function;
 
 @Component
 public class JwtUtil {
-    
 
-    private String secret="django-insecure-r0n0n9tkdg7o@u%+80xp!fyt!5m_)yzsdv8flk_vr-=3sb=xew";
-    
- 
-    private Long accessTokenExpiration=300000l; // 5 minutos
-    
 
-    private Long refreshTokenExpiration=86400000l; // 24 horas
+    @Value("${jwt.secret}")
+    private String secret;
+
+    @Value("${jwt.access-token-expiration}")
+    private Long accessTokenExpiration;
+
+    @Value("${jwt.refresh-token-expiration}")
+    private Long refreshTokenExpiration;
     
     private SecretKey getSigningKey() {
         return Keys.hmacShaKeyFor(secret.getBytes());
