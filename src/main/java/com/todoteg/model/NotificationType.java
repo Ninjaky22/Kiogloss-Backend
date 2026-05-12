@@ -1,0 +1,8 @@
+package com.todoteg.model;
+
+public enum NotificationType {
+    ORDER_CREATED,
+    ORDER_STATUS_CHANGED,
+    LOW_STOCK,
+    OUT_OF_STOCK
+}

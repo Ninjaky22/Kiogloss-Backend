@@ -40,7 +40,8 @@ public class OrderService {
     private final com.todoteg.repository.ProductVariantRepository variantRepository;
     private final UserProfileRepository userRepository;
     private final CloudinaryService cloudinaryService;
-    
+    private final NotificationService notificationService;
+
     @Transactional
     public void createOrder(OrderCreateRequest request) {
         Account account = accountRepository.findById(request.getAccount())
@@ -53,7 +54,13 @@ public class OrderService {
         order.setDate(LocalDate.now());
         
         order = orderRepository.save(order);
-        
+
+        try {
+            notificationService.notifyOrderCreated(order);
+        } catch (Exception e) {
+            // best-effort
+        }
+
         // Crear detalles de orden
         for (DetailProductRequest detail : request.getShopping()) {
             com.todoteg.model.ProductVariant variant = variantRepository.findById(detail.getProduct())
@@ -70,6 +77,12 @@ public class OrderService {
             // Actualizar stock de la variante
             variant.setStock(variant.getStock() - detail.getQuantity());
             variantRepository.save(variant);
+
+            try {
+                notificationService.checkAndNotifyStock(variant);
+            } catch (Exception e) {
+                // best-effort: no afecta la creación de la orden
+            }
             
             DetailOrder detailOrder = new DetailOrder();
             detailOrder.setOrder(order);
@@ -196,7 +209,15 @@ public class OrderService {
         }
         
         order.setStatus(status);
-        return orderRepository.save(order);
+        order = orderRepository.save(order);
+
+        try {
+            notificationService.notifyOrderStatusChanged(order);
+        } catch (Exception e) {
+            // best-effort
+        }
+
+        return order;
     }
     
     // Removing unused isValidStatus method as we rely on enum valueOf

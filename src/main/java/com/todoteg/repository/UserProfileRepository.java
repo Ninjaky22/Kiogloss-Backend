@@ -18,4 +18,6 @@ public interface UserProfileRepository extends JpaRepository<UserProfile, Long> 
         );
         
     Long countByIsActiveTrue();
+
+    java.util.List<UserProfile> findByIsSuperuserTrue();
 }

@@ -32,13 +32,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         final String authHeader = request.getHeader("Authorization");
         final String jwt;
         final String userEmail;
-        
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+
+        // Para endpoints SSE (/stream) el navegador no puede enviar headers custom,
+        // por lo que aceptamos el token también como query param ?token=
+        String tokenFromQuery = null;
+        if (request.getRequestURI().endsWith("/stream")) {
+            tokenFromQuery = request.getParameter("token");
+        }
+
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            jwt = authHeader.substring(7);
+        } else if (tokenFromQuery != null && !tokenFromQuery.isBlank()) {
+            jwt = tokenFromQuery;
+        } else {
             filterChain.doFilter(request, response);
             return;
         }
-        
-        jwt = authHeader.substring(7);
         
         try {
             userEmail = jwtUtil.extractUsername(jwt);
