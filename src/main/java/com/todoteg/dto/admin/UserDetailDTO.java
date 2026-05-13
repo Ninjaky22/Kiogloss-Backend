@@ -18,10 +18,14 @@ public class UserDetailDTO {
     private Boolean isActive;
     private Boolean isStaff;
     private Boolean isSuperuser;
-    
+
+    // Contadores a nivel raíz (equivalente al UserDashboardDTO del frontend)
+    private Integer totalOrders;
+    private Integer totalFavorites;
+
     // Cuenta con más detalles
     private AccountDetailDTO account;
-    
+
     // Lista de órdenes recientes
     private List<OrderSummaryDTO> recentOrders;
 }

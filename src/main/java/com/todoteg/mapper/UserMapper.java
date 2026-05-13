@@ -1,5 +1,6 @@
 package com.todoteg.mapper;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -19,6 +20,8 @@ import com.todoteg.dto.admin.PageResponseDTO;
 import com.todoteg.dto.admin.UserDashboardDTO;
 import com.todoteg.dto.admin.ProductBasicDTO;
 import com.todoteg.dto.admin.UserDetailDTO;
+import com.todoteg.dto.admin.AccountDetailDTO;
+import com.todoteg.model.Account;
 import com.todoteg.model.Address;
 import com.todoteg.model.DetailOrder;
 import com.todoteg.model.Order;
@@ -56,7 +59,41 @@ public class UserMapper {
         dto.setIsActive(user.getIsActive());
         dto.setIsStaff(user.getIsStaff());
         dto.setIsSuperuser(user.getIsSuperuser());
-        
+
+        if (user.getAccount() != null) {
+            var account = user.getAccount();
+
+            // Contadores a nivel raíz (lo que el frontend espera como user.totalFavorites)
+            int favCount = account.getFavorites().size();
+            int ordCount = account.getOrders().size();
+            dto.setTotalFavorites(favCount);
+            dto.setTotalOrders(ordCount);
+
+            // Objeto account con detalles
+            AccountDetailDTO accountDTO = new AccountDetailDTO();
+            accountDTO.setId(account.getId());
+            accountDTO.setPointsPerPurchase(account.getPointsPerPurchase());
+            accountDTO.setIsActive(account.getIsActive());
+            accountDTO.setAddress(toAddressDTO(account.getAddress()));
+            accountDTO.setTotalOrders(ordCount);
+            accountDTO.setTotalFavorites(favCount);
+            dto.setAccount(accountDTO);
+
+            // Últimas 5 órdenes ordenadas por fecha descendente
+            List<OrderSummaryDTO> recentOrders = account.getOrders().stream()
+                    .sorted(Comparator.comparing(
+                            com.todoteg.model.Order::getDate,
+                            Comparator.nullsLast(Comparator.reverseOrder())
+                    ))
+                    .limit(5)
+                    .map(this::toOrderSummaryDTO)
+                    .collect(Collectors.toList());
+            dto.setRecentOrders(recentOrders);
+        } else {
+            dto.setTotalFavorites(0);
+            dto.setTotalOrders(0);
+        }
+
         return dto;
     }
 
