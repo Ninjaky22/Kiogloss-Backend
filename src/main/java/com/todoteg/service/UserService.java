@@ -60,6 +60,7 @@ public class UserService {
             address.setStreet(request.getAddress().getStreet());
             address.setStreetNumber(request.getAddress().getStreetNumber());
             address.setDistric(request.getAddress().getDistric());
+            address.setCity(request.getAddress().getCity());
             address = addressRepository.save(address);
         }
         
@@ -140,6 +141,7 @@ public class UserService {
         accountInfo.setFavorite(favoriteData);
         accountInfo.setPointsPerPurchase(account.getPointsPerPurchase());
         accountInfo.setAddress(account.getAddress() != null ? account.getAddress().toString() : "");
+        accountInfo.setCity(account.getAddress() != null ? account.getAddress().getCity() : "");
         accountInfo.setIsActive(account.getIsActive());
         
         UserDetailResponse response = new UserDetailResponse();
@@ -188,6 +190,7 @@ public class UserService {
             address.setStreet(request.getAddress().getStreet());
             address.setStreetNumber(request.getAddress().getStreetNumber());
             address.setDistric(request.getAddress().getDistric());
+            address.setCity(request.getAddress().getCity());
             addressRepository.save(address);
             
             account.setAddress(address);

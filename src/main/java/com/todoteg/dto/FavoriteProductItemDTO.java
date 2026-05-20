@@ -13,4 +13,5 @@ public class FavoriteProductItemDTO {
     private String price;
     private String slug;
     private String image;
+    private Long defaultVariantId;
 }

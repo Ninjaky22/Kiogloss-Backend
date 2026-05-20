@@ -1,5 +1,6 @@
 package com.todoteg.service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -52,8 +53,8 @@ public class ProductService {
                     .setMaxResults(pageable.getPageSize());
             
             products = new PageImpl<>(query.getResultList(), pageable, total);
-        } else if (search != null && !search.isEmpty()) {
-            products = productRepository.searchByStatus("published",search, pageable);
+        } else if (search != null && !search.isBlank()) {
+            products = searchByWords(search.trim(), pageable);
         } else {
             products = productRepository.findAllPublished(pageable);
         }
@@ -74,6 +75,58 @@ public class ProductService {
                 .collect(Collectors.toList());
     }
     
+    /**
+     * Búsqueda por palabras individuales (mínimo 3 caracteres cada una).
+     * Cada palabra se busca con LIKE '%palabra%' en título, tags y opciones de variante.
+     * Las condiciones se unen con OR para que cualquier coincidencia devuelva el producto.
+     * Usa JPQL dinámico vía EntityManager para garantizar compatibilidad con PostgreSQL.
+     */
+    private Page<Product> searchByWords(String search, Pageable pageable) {
+        // Dividir en palabras y filtrar las que tengan al menos 3 caracteres
+        String[] parts = search.split("\\s+");
+        List<String> words = new ArrayList<>();
+        for (String part : parts) {
+            if (part.length() >= 3) words.add(part.toLowerCase());
+        }
+        // Si ninguna palabra cumple el mínimo, usar el término completo
+        if (words.isEmpty()) words.add(search.toLowerCase());
+
+        // Construir condición dinámica: una cláusula OR por cada palabra
+        StringBuilder conditionBuilder = new StringBuilder();
+        for (int i = 0; i < words.size(); i++) {
+            if (i > 0) conditionBuilder.append(" OR ");
+            conditionBuilder.append(
+                "(LOWER(p.title) LIKE :w").append(i)
+                .append(" OR EXISTS (SELECT t FROM p.tags t WHERE LOWER(t.name) LIKE :w").append(i).append(")")
+                .append(" OR EXISTS (SELECT v FROM p.variants v JOIN v.options o WHERE LOWER(o.value) LIKE :w").append(i).append("))")
+            ;
+        }
+        String condition = conditionBuilder.toString();
+
+        String baseJpql  = "FROM Product p WHERE p.status = 'published' AND (" + condition + ")";
+        String dataJpql  = "SELECT DISTINCT p " + baseJpql + " ORDER BY p.published DESC";
+        String countJpql = "SELECT COUNT(DISTINCT p) " + baseJpql;
+
+        jakarta.persistence.TypedQuery<Product> dataQuery =
+                entityManager.createQuery(dataJpql, Product.class);
+        jakarta.persistence.TypedQuery<Long> countQuery =
+                entityManager.createQuery(countJpql, Long.class);
+
+        for (int i = 0; i < words.size(); i++) {
+            String pattern = "%" + words.get(i) + "%";
+            dataQuery.setParameter("w" + i, pattern);
+            countQuery.setParameter("w" + i, pattern);
+        }
+
+        Long total   = countQuery.getSingleResult();
+        List<Product> content = dataQuery
+                .setFirstResult((int) pageable.getOffset())
+                .setMaxResults(pageable.getPageSize())
+                .getResultList();
+
+        return new PageImpl<>(content, pageable, total);
+    }
+
     private ProductListDTO convertToListDTO(Product product) {
         List<Images> images = imagesRepository.findByProductId(product.getId());
         String imageUrl = images.isEmpty() ? "" : 
@@ -106,8 +159,10 @@ public class ProductService {
                 .collect(Collectors.toList());
                 
         List<com.todoteg.dto.ProductVariantDTO> variants = product.getVariants().stream()
+                .sorted(Comparator.comparing(com.todoteg.model.ProductVariant::getId))
                 .map(v -> {
                     List<VariantOptionDTO> options = v.getOptions().stream()
+                        .sorted(Comparator.comparing(com.todoteg.model.VariantOption::getId))
                         .map(o -> new VariantOptionDTO(o.getId(), o.getVariantType().getName(), o.getValue(), o.getMetaValue()))
                         .collect(Collectors.toList());
                     return new com.todoteg.dto.ProductVariantDTO(v.getId(), options, v.getStock(), v.getSku(), v.getImageUrl());

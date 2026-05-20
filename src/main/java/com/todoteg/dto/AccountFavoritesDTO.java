@@ -14,4 +14,5 @@ public class AccountFavoritesDTO {
     private List<FavoriteIdDTO> favoriteID;
     private Object favorite; // puede ser lista o string
     private String address;
+    private String city;
 }

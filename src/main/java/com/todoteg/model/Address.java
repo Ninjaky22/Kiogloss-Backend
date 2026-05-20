@@ -24,9 +24,12 @@ public class Address {
     
     @Column(nullable = false)
     private String distric;
-    
+
+    @Column
+    private String city;
+
     @Override
     public String toString() {
-        return street + " " + streetNumber + " " + distric;
+        return street + " " + streetNumber + " " + distric + (city != null ? ", " + city : "");
     }
 }

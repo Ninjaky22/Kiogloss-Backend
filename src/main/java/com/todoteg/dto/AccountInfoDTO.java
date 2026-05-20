@@ -17,7 +17,8 @@ public class AccountInfoDTO {
     private Integer pointsPerPurchase;
     
     private String address;
-    
+    private String city;
+
     @JsonProperty("isActive")
     private Boolean isActive;
 }

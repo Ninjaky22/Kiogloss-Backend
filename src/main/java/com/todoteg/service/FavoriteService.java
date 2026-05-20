@@ -78,12 +78,18 @@ public class FavoriteService {
                 String imageUrl = images.isEmpty() ? "" : 
                         cloudinaryService.getImageUrl(images.get(0).getImage());
                 
+                Long defaultVariantId = product.getVariants().stream()
+                        .findFirst()
+                        .map(v -> v.getId())
+                        .orElse(null);
+
                 FavoriteProductItemDTO item = new FavoriteProductItemDTO();
                 item.setId(product.getId());
                 item.setName(product.getTitle());
                 item.setPrice(product.getPrice().toString());
                 item.setSlug(product.getSlug());
                 item.setImage(imageUrl);
+                item.setDefaultVariantId(defaultVariantId);
                 return item;
             }).collect(Collectors.toList());
         }
@@ -93,6 +99,7 @@ public class FavoriteService {
         accountDTO.setFavoriteID(favoriteIds);
         accountDTO.setFavorite(favoriteData);
         accountDTO.setAddress(account.getAddress() != null ? account.getAddress().toString() : "");
+        accountDTO.setCity(account.getAddress() != null ? account.getAddress().getCity() : "");
         
         return new AccountFavoritesResponse(accountDTO);
     }

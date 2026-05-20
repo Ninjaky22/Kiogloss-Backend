@@ -13,8 +13,9 @@ public class AddressDTO {
     private String street;
     private String streetNumber;
     private String distric;
-    
+    private String city;
+
     public String getFullAddress() {
-        return street + " " + streetNumber + ", " + distric;
+        return street + " " + streetNumber + ", " + distric + (city != null ? ", " + city : "");
     }
 }
