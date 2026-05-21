@@ -43,10 +43,6 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final CloudinaryService cloudinaryService;
     
-	public Page<UserProfile> findAllUsers(Pageable pageable) {
-		return userRepository.findAll(pageable);
-	}
-    
     @Transactional
     public UserProfile createUser(UserCreateRequest request) throws Exception {
         // Validar email único
@@ -54,9 +50,10 @@ public class UserService {
             throw new RuntimeException("Email already exists");
         }
         
-        // Crear Address
-        Address address = new Address();
+        // Crear Address solo si viene en la petición
+        Address address = null;
         if (request.getAddress() != null) {
+            address = new Address();
             address.setStreet(request.getAddress().getStreet());
             address.setStreetNumber(request.getAddress().getStreetNumber());
             address.setDistric(request.getAddress().getDistric());
@@ -102,6 +99,7 @@ public class UserService {
         return user;
     }
     
+    @Transactional(readOnly = true)
     public UserDetailResponse getUserDetail(Long userId, String requestUrl) {
         UserProfile user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -124,6 +122,15 @@ public class UserService {
                         .map(img -> cloudinaryService.getImageUrl(img.getImage()))
                         .collect(Collectors.toList());
                 
+                boolean hasRealVariants = product.getVariants().stream()
+                        .anyMatch(v -> !v.getOptions().isEmpty());
+                Long defaultVariantId = null;
+                if (!hasRealVariants && !product.getVariants().isEmpty()) {
+                    defaultVariantId = product.getVariants().stream()
+                            .sorted(java.util.Comparator.comparing(com.todoteg.model.ProductVariant::getId))
+                            .findFirst().map(v -> v.getId()).orElse(null);
+                }
+
                 FavoriteProductDTO dto = new FavoriteProductDTO();
                 dto.setIdFa(fav.getId());
                 dto.setId(product.getId());
@@ -131,6 +138,8 @@ public class UserService {
                 dto.setPrice(product.getPrice().toString());
                 dto.setSlug(product.getSlug());
                 dto.setImages(imageUrls);
+                dto.setHasVariants(hasRealVariants);
+                dto.setDefaultVariantId(defaultVariantId);
                 return dto;
             }).collect(Collectors.toList());
         }

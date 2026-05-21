@@ -14,10 +14,12 @@ import lombok.NoArgsConstructor;
 public class FavoriteProductDTO {
     @JsonProperty("idFa")
     private Long idFa;
-    
+
     private Long id;
     private String name;
     private String price;
     private String slug;
     private List<String> images;
+    private boolean hasVariants;
+    private Long defaultVariantId;
 }

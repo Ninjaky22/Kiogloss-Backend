@@ -1,8 +1,11 @@
 package com.todoteg.service;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import org.springframework.transaction.annotation.Transactional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -35,13 +38,14 @@ public class ProductService {
     private final CloudinaryService cloudinaryService;
     private final EntityManager entityManager;
     
+    @Transactional(readOnly = true)
     public Page<ProductListDTO> getPublishedProducts(String search, List<String> tags, Pageable pageable) {
         Page<Product> products;
         
         if (tags != null && !tags.isEmpty()) {
             List<String> lowerTags = tags.stream().map(String::toLowerCase).collect(Collectors.toList());
             
-            String countJpql = "SELECT COUNT(DISTINCT p) FROM Product p JOIN p.tags t WHERE p.status = 'published' AND LOWER(t.name) IN :tagNames";
+            String countJpql = "SELECT COUNT(DISTINCT p.id) FROM Product p JOIN p.tags t WHERE p.status = 'published' AND LOWER(t.name) IN :tagNames";
             Long total = entityManager.createQuery(countJpql, Long.class)
                     .setParameter("tagNames", lowerTags)
                     .getSingleResult();
@@ -62,6 +66,7 @@ public class ProductService {
         return products.map(this::convertToListDTO);
     }
     
+    @Transactional(readOnly = true)
     public ProductDetailDTO getProductBySlug(String slug) {
         Product product = productRepository.findBySlug(slug)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
@@ -76,41 +81,35 @@ public class ProductService {
     }
     
     /**
-     * Búsqueda por palabras individuales (mínimo 3 caracteres cada una).
-     * Cada palabra se busca con LIKE '%palabra%' en título, tags y opciones de variante.
-     * Las condiciones se unen con OR para que cualquier coincidencia devuelva el producto.
-     * Usa JPQL dinámico vía EntityManager para garantizar compatibilidad con PostgreSQL.
+     * Búsqueda por palabras individuales (mínimo 3 caracteres).
+     * Usa LEFT JOIN en lugar de EXISTS correlacionado para máxima compatibilidad con Hibernate/PostgreSQL.
+     * El DISTINCT garantiza que cada producto aparezca una sola vez aunque coincida en varios campos.
      */
     private Page<Product> searchByWords(String search, Pageable pageable) {
-        // Dividir en palabras y filtrar las que tengan al menos 3 caracteres
         String[] parts = search.split("\\s+");
         List<String> words = new ArrayList<>();
         for (String part : parts) {
             if (part.length() >= 3) words.add(part.toLowerCase());
         }
-        // Si ninguna palabra cumple el mínimo, usar el término completo
         if (words.isEmpty()) words.add(search.toLowerCase());
 
-        // Construir condición dinámica: una cláusula OR por cada palabra
-        StringBuilder conditionBuilder = new StringBuilder();
+        // Una cláusula OR por palabra usando LEFT JOIN (sin subqueries correlacionados)
+        StringBuilder wordConditions = new StringBuilder();
         for (int i = 0; i < words.size(); i++) {
-            if (i > 0) conditionBuilder.append(" OR ");
-            conditionBuilder.append(
-                "(LOWER(p.title) LIKE :w").append(i)
-                .append(" OR EXISTS (SELECT t FROM p.tags t WHERE LOWER(t.name) LIKE :w").append(i).append(")")
-                .append(" OR EXISTS (SELECT v FROM p.variants v JOIN v.options o WHERE LOWER(o.value) LIKE :w").append(i).append("))")
-            ;
+            if (i > 0) wordConditions.append(" OR ");
+            wordConditions
+                .append("LOWER(p.title) LIKE :w").append(i)
+                .append(" OR LOWER(t.name) LIKE :w").append(i)
+                .append(" OR LOWER(o.value) LIKE :w").append(i);
         }
-        String condition = conditionBuilder.toString();
 
-        String baseJpql  = "FROM Product p WHERE p.status = 'published' AND (" + condition + ")";
-        String dataJpql  = "SELECT DISTINCT p " + baseJpql + " ORDER BY p.published DESC";
-        String countJpql = "SELECT COUNT(DISTINCT p) " + baseJpql;
+        String baseFrom  = "FROM Product p LEFT JOIN p.tags t LEFT JOIN p.variants v LEFT JOIN v.options o "
+                         + "WHERE p.status = 'published' AND (" + wordConditions + ")";
+        String dataJpql  = "SELECT DISTINCT p " + baseFrom + " ORDER BY p.published DESC";
+        String countJpql = "SELECT COUNT(DISTINCT p.id) " + baseFrom;
 
-        jakarta.persistence.TypedQuery<Product> dataQuery =
-                entityManager.createQuery(dataJpql, Product.class);
-        jakarta.persistence.TypedQuery<Long> countQuery =
-                entityManager.createQuery(countJpql, Long.class);
+        TypedQuery<Product> dataQuery  = entityManager.createQuery(dataJpql,  Product.class);
+        TypedQuery<Long>    countQuery = entityManager.createQuery(countJpql, Long.class);
 
         for (int i = 0; i < words.size(); i++) {
             String pattern = "%" + words.get(i) + "%";
@@ -118,7 +117,7 @@ public class ProductService {
             countQuery.setParameter("w" + i, pattern);
         }
 
-        Long total   = countQuery.getSingleResult();
+        Long total = countQuery.getSingleResult();
         List<Product> content = dataQuery
                 .setFirstResult((int) pageable.getOffset())
                 .setMaxResults(pageable.getPageSize())

@@ -51,6 +51,7 @@ public class FavoriteService {
         return favorite.getId();
     }
     
+    @Transactional
     public void removeFavorite(Long favoriteId) {
         DetailFavoritos favorite = favoritosRepository.findById(favoriteId)
                 .orElseThrow(() -> new RuntimeException("Favorite not found"));
@@ -58,6 +59,7 @@ public class FavoriteService {
         favoritosRepository.delete(favorite);
     }
     
+    @Transactional
     public AccountFavoritesResponse getAccountFavorites(Long accountId) {
         Account account = accountRepository.findById(accountId)
                 .orElseThrow(() -> new RuntimeException("Account not found"));

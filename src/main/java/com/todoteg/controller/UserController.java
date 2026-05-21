@@ -48,7 +48,7 @@ public class UserController {
             @RequestParam(name = "page_size", defaultValue = "8") int pageSize
     		){
     	Pageable pageable = PageRequest.of(page, pageSize, Sort.by("name").descending());
-    	return ResponseEntity.ok(userService.findAllUsers(pageable));
+    	return ResponseEntity.ok(userService.findAllUsers(search, pageable));
     }
     
     /**
